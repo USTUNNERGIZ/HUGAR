@@ -6,6 +6,7 @@ import { getSupabase } from '../lib/supabase';
 import PinGate, { hasPin } from './PinGate';
 import EntryForm from './EntryForm';
 import MarketCari from './MarketCari';
+import IsoMarket from './IsoMarket';
 import './hugar-dashboard.css';
 import './hugar-dashboard-extra.css';
 import type { User } from '@supabase/supabase-js';
@@ -240,7 +241,7 @@ export default function Page() {
 
   if (role === 'loading') return <main className="center">Yetkiler kontrol ediliyor…</main>;
   if (role === 'unknown') return <main className="center"><div className="login"><h2>Yetkisiz hesap</h2><button onClick={()=>void db.auth.signOut()}>Çıkış</button></div></main>;
-  if (role === 'employee') return <main style={{minHeight:'100vh',background:'#180f18',color:'#fff',padding:'22px'}}><div style={{maxWidth:1100,margin:'auto'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><strong>KAPLAN FİNANS · Beyoğlu Mini Market</strong><button onClick={()=>void db.auth.signOut()}>Çıkış Yap</button></div><MarketCari admin={false}/></div></main>;
+  if (role === 'employee') return <IsoMarket onLogout={()=>void db.auth.signOut()}/>;
 
   const businessGroups = groups.filter(g => {
     const n = g.name.toLocaleLowerCase('tr-TR').replace(/[^a-z0-9ğüşöçı]/g, '');

@@ -1,0 +1,417 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getSupabase } from '../lib/supabase';
+import PinGate, { hasPin } from './PinGate';
+import EntryForm from './EntryForm';
+import type { User } from '@supabase/supabase-js';
+
+const db = getSupabase();
+
+type Group = { id: number; name: string; sort_order: number };
+type Account = {
+  id: number; group_id: number; name: string;
+  account_type: string; opening_balance: number; opening_date: string;
+};
+type Movement = {
+  id: number; group_id: number; account_id: number;
+  direction: string; amount: number; movement_date: string;
+};
+type Document = {
+  id: number; group_id: number; document_type: string;
+  description: string; amount: number; due_date: string | null;
+};
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY'
+  }).format(n);
+
+const safeName = (v: string) =>
+  /^[a-z0-9][a-z0-9._-]{2,31}$/.test(v);
+
+export default function Page() {
+  const [user, setUser] = useState<User | null>(null);
+  const [ready, setReady] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [active, setActive] = useState<number | null>(null);
+  const [display, setDisplay] = useState('');
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [pinLocked, setPinLocked] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!db) {
+      setReady(true);
+      return;
+    }
+
+    db.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setPinLocked(!!data.user && hasPin(data.user.id));
+      setReady(true);
+    });
+
+    const { data } = db.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN') setPinLocked(false);
+      if (event === 'SIGNED_OUT') { setPinLocked(false); setShowPinSetup(false); }
+    });
+
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!db || !user) return;
+    let live = true;
+
+    (async () => {
+      const [g, a, m, d, p] = await Promise.all([
+        db.from('finance_groups')
+          .select('id,name,sort_order').order('sort_order'),
+        db.from('finance_accounts')
+          .select('id,group_id,name,account_type,opening_balance,opening_date'),
+        db.from('finance_movements')
+          .select('id,group_id,account_id,direction,amount,movement_date'),
+        db.from('finance_documents')
+          .select('id,group_id,document_type,description,amount,due_date'),
+        db.from('finance_user_roles')
+          .select('display_name,username')
+          .eq('user_id', user.id).maybeSingle()
+      ]);
+
+      if (!live) return;
+
+      const err = [g, a, m, d, p].find(x => x.error)?.error;
+      if (err) setError(err.message);
+
+      setGroups(g.data || []);
+      setAccounts(a.data || []);
+      setMovements(m.data || []);
+      setDocuments(d.data || []);
+      setDisplay(p.data?.display_name || p.data?.username || 'Kullanıcı');
+    })();
+
+    return () => { live = false; };
+  }, [user, refreshKey]);
+
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    if (!db) return;
+
+    const name = username.trim().toLowerCase();
+
+    if (!name.includes('@') && !safeName(name)) {
+      setError('Kullanıcı adı geçersiz.');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+
+    // Mevcut yönetici hesabının kullanıcı adı eşleştirmesi.
+    // Diğer çalışanların giriş sistemi ayrıca yapılandırılmalıdır.
+    const email = name === 'sabri'
+      ? 'beyogluhugar@hotmail.com'
+      : name.includes('@')
+        ? name
+        : `${name}@staff.invalid`;
+
+    const { error } = await db.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) setError('Kullanıcı adı veya şifre hatalı.');
+    setBusy(false);
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!db || !user || passwordBusy) return;
+
+    setPasswordMessage('');
+
+    if (newPassword.length < 12) {
+      setPasswordMessage('Yeni şifre en az 12 karakter olmalıdır.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage('Şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+
+    setPasswordBusy(true);
+
+    const { error } = await db.auth.updateUser({
+      password: newPassword
+    });
+
+    setPasswordBusy(false);
+
+    if (error) {
+      setPasswordMessage('Şifre değiştirilemedi: ' + error.message);
+      return;
+    }
+
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordChange(false);
+    window.alert('Şifreniz başarıyla değiştirildi.');
+  }
+
+  if (!ready) return <main className="center">Yükleniyor…</main>;
+
+  if (!db) return (
+    <main className="center">
+      <div className="login">
+        <h1>Finans Yönetim Merkezi</h1>
+        <p>.env.local dosyasındaki Supabase bağlantısını kontrol edin.</p>
+      </div>
+    </main>
+  );
+
+  if (!user) return (
+    <main className="center">
+      <form className="login" onSubmit={login}>
+        <div className="mark">₺</div>
+        <h1>Finans Yönetim Merkezi</h1>
+        <p>Dört grubunuz, tek güvenli panel.</p>
+        <label>
+          Kullanıcı adı
+          <input required autoComplete="username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            placeholder="ör. sabri" />
+        </label>
+        <label>
+          Şifre
+          <input required type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={e => setPassword(e.target.value)} />
+        </label>
+        {error && <div className="error">{error}</div>}
+        <button disabled={busy}>
+          {busy ? 'Giriş yapılıyor…' : 'Giriş yap'}
+        </button>
+        <small>Çalışan hesabı yönetici tarafından oluşturulur.</small>
+      </form>
+    </main>
+  );
+
+  if (pinLocked) return <PinGate mode="unlock" userId={user.id}
+    onDone={() => setPinLocked(false)}
+    onCancel={() => { void db.auth.signOut(); }} />;
+
+  const selected = groups.filter(g => active === null || g.id === active);
+
+  const balances = accounts.map(a => ({
+    ...a,
+    balance: Number(a.opening_balance) +
+      movements
+        .filter(m => m.account_id === a.id && m.movement_date >= a.opening_date)
+        .reduce((s, m) =>
+          s + (m.direction === 'in' ? 1 : -1) * Number(m.amount), 0)
+  }));
+
+  const total = balances
+    .filter(a => selected.some(g => g.id === a.group_id) &&
+      a.account_type !== 'credit_card')
+    .reduce((s, a) => s + a.balance, 0);
+
+  const debt = documents
+    .filter(d => selected.some(g => g.id === d.group_id) &&
+      d.document_type === 'expense')
+    .reduce((s, d) => s + Number(d.amount), 0);
+
+  return (
+    <div className="shell">
+      <aside>
+        <div className="brand">
+          <span className="mark">₺</span>
+          <div>
+            <strong>Finans Merkezi</strong>
+            <small>Gece / Bordo</small>
+          </div>
+        </div>
+
+        <h3>Finans grupları</h3>
+        <button className={active === null ? 'selected' : ''}
+          onClick={() => setActive(null)}>Genel görünüm</button>
+
+        {groups.map(g => (
+          <button key={g.id}
+            className={active === g.id ? 'selected' : ''}
+            onClick={() => setActive(g.id)}>{g.name}</button>
+        ))}
+<div className="user">
+          <div>{display}</div>
+          <button type="button" onClick={() => setShowPinSetup(true)}>
+            {hasPin(user.id) ? 'PIN Değiştir' : '4 Haneli PIN Ayarla'}
+          </button>
+          {hasPin(user.id) && <button type="button" onClick={() => setPinLocked(true)}>
+            Ekranı Kilitle
+          </button>}
+          <button type="button"
+            onClick={() => {
+              setPasswordMessage('');
+              setShowPasswordChange(true);
+            }}>
+            Şifre Değiştir
+          </button>
+          <button type="button" onClick={() => db.auth.signOut()}>
+            Çıkış yap
+          </button>
+        </div>
+      </aside>
+
+      <main>
+        <header>
+          <div>
+            <p className="eyebrow">FİNANS YÖNETİM MERKEZİ</p>
+            <h1>{active === null ? 'Genel Bakış' :
+              groups.find(g => g.id === active)?.name}</h1>
+            <p className="muted">Kasa, banka, kredi kartı ve belgeler</p>
+          </div>
+          <span className="tag">V6 · Gelir / Gider</span>
+        </header>
+
+        {error && <div className="error">{error}</div>}
+
+        {showPinSetup && <PinGate mode="setup" userId={user.id}
+          onDone={() => setShowPinSetup(false)}
+          onCancel={() => setShowPinSetup(false)} />}
+
+        <EntryForm groups={groups} accounts={accounts}
+          onSaved={() => { setError(''); setRefreshKey(v => v + 1); }} />
+
+        {showPasswordChange && (
+          <section className="panel" style={{ maxWidth: 480 }}>
+            <h2>Şifre Değiştir</h2>
+            <form onSubmit={changePassword}
+              style={{ display: 'grid', gap: 14, marginTop: 18 }}>
+              <label>
+                Yeni şifre
+                <input type="password" required minLength={12}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  style={{ display: 'block', width: '100%', marginTop: 8 }} />
+              </label>
+              <label>
+                Yeni şifre tekrar
+                <input type="password" required minLength={12}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  style={{ display: 'block', width: '100%', marginTop: 8 }} />
+              </label>
+              {passwordMessage && <div className="error">{passwordMessage}</div>}
+              <button type="submit" disabled={passwordBusy}
+                style={{ background: '#72263f', color: 'white',
+                  padding: 12, borderRadius: 9 }}>
+                {passwordBusy ? 'Kaydediliyor…' : 'Yeni Şifreyi Kaydet'}
+              </button>
+              <button type="button" onClick={() => {
+                setShowPasswordChange(false);
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordMessage('');
+              }}>İptal</button>
+            </form>
+          </section>
+        )}
+
+        <section className="cards">
+          <article>
+            <small>Nakit + banka bakiyesi</small>
+            <strong>{fmt(total)}</strong>
+            <span>Mevcut hesap hareketlerinden</span>
+          </article>
+          <article>
+            <small>Kaydedilen gider toplamı</small>
+            <strong>{fmt(debt)}</strong>
+            <span>Ödenmiş giderleri de içerir; borç bakiyesi değildir</span>
+          </article>
+          <article>
+            <small>Hesap sayısı</small>
+            <strong>{balances.filter(a =>
+              selected.some(g => g.id === a.group_id)).length}</strong>
+            <span>Grup bazında</span>
+          </article>
+        </section>
+
+        <section className="panel">
+          <h2>Hesaplar</h2>
+          {balances.filter(a =>
+            selected.some(g => g.id === a.group_id)).length === 0
+            ? <p className="muted">Henüz hesap oluşturulmadı. Gerçek kayıt
+              girmeden önce yetki ve işlem kontrollerini tamamlayacağız.</p>
+            : <div className="table">
+              <table>
+                <thead><tr><th>Grup</th><th>Hesap</th><th>Tür</th>
+                  <th>Hesaplanan bakiye</th></tr></thead>
+                <tbody>
+                  {balances.filter(a =>
+                    selected.some(g => g.id === a.group_id)).map(a => (
+                    <tr key={a.id}>
+                      <td>{groups.find(g => g.id === a.group_id)?.name}</td>
+                      <td>{a.name}</td>
+                      <td>{a.account_type}</td>
+                      <td>{fmt(a.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>}
+        </section>
+
+        <section className="panel">
+          <h2>Son belgeler</h2>
+          {documents.filter(d =>
+            selected.some(g => g.id === d.group_id)).length === 0
+            ? <p className="muted">Henüz fatura veya gelir belgesi yok.</p>
+            : <div className="table">
+              <table>
+                <thead><tr><th>Açıklama</th><th>Tür</th><th>Tutar</th>
+                  <th>Vade</th></tr></thead>
+                <tbody>
+                  {documents.filter(d =>
+                    selected.some(g => g.id === d.group_id))
+                    .slice(0, 20).map(d => (
+                    <tr key={d.id}>
+                      <td>{d.description}</td>
+                      <td>{d.document_type}</td>
+                      <td>{fmt(Number(d.amount))}</td>
+                      <td>{d.due_date || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>}
+        </section>
+
+        <p className="muted foot">
+          Bu sürümde hesaba bağlı gelir ve gider kaydı eklenebilir.
+          Transfer, düzenleme, silme ve gerçek borç/alacak hesabı henüz aktif değildir.
+        </p>
+      </main>
+    </div>
+  );
+}

@@ -46,7 +46,7 @@ export default function PinScreen({
     <main className="center">
       <form className="login" onSubmit={submit}>
         <div className="mark">₺</div>
-        <h1>HUGAR Finans Merkezi</h1>
+        <h1>KAPLAN FİNANS</h1>
         <p>Devam etmek için 4 haneli PIN girin.</p>
 
         <label>

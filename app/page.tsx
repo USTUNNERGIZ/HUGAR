@@ -240,7 +240,7 @@ export default function Page() {
 
   if (role === 'loading') return <main className="center">Yetkiler kontrol ediliyor…</main>;
   if (role === 'unknown') return <main className="center"><div className="login"><h2>Yetkisiz hesap</h2><button onClick={()=>void db.auth.signOut()}>Çıkış</button></div></main>;
-  if (role === 'employee') return <main style={{minHeight:'100vh',background:'#180f18',color:'#fff',padding:'22px'}}><div style={{maxWidth:1100,margin:'auto'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><strong>HUGAR · Beyoğlu Mini Market</strong><button onClick={()=>void db.auth.signOut()}>Çıkış Yap</button></div><MarketCari admin={false}/></div></main>;
+  if (role === 'employee') return <main style={{minHeight:'100vh',background:'#180f18',color:'#fff',padding:'22px'}}><div style={{maxWidth:1100,margin:'auto'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><strong>KAPLAN FİNANS · Beyoğlu Mini Market</strong><button onClick={()=>void db.auth.signOut()}>Çıkış Yap</button></div><MarketCari admin={false}/></div></main>;
 
   const businessGroups = groups.filter(g => {
     const n = g.name.toLocaleLowerCase('tr-TR').replace(/[^a-z0-9ğüşöçı]/g, '');
@@ -298,8 +298,8 @@ export default function Page() {
         <div className="brand">
           <span className="mark">₺</span>
           <div>
-            <strong>Finans Merkezi</strong>
-            <small>Gece / Bordo</small>
+            <strong>KAPLAN FİNANS</strong>
+            <small>Finans Yönetimi</small>
           </div>
         </div>
 
@@ -341,7 +341,7 @@ export default function Page() {
               groups.find(g => g.id === active)?.name}</h1>
             <p className="muted">{active === null ? 'Beyoğlu Mini Market · Hugar Gıda · Taksim Crown Hotel' : isBusiness ? 'İşletmeye özel gelir, gider ve hesap takibi' : 'Ev finansları için ayrı bölüm hazırlanacak'}</p>
           </div>
-          <span className="tag">HUGAR · İşletme Finansları</span>
+          <span className="tag">KAPLAN FİNANS · İşletme Finansları</span>
         </header>
 
         {error && <div className="error">{error}</div>}

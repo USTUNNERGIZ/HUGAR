@@ -82,7 +82,7 @@ export default function PinGate({ mode, userId, onDone, onCancel }: {
   return <main className="center" style={{ minHeight: mode === 'unlock' ? '100vh' : undefined }}>
     <section className="login" style={{ maxWidth: 440, width: '100%' }}>
       <div className="mark">₺</div>
-      <h2>{mode === 'unlock' ? 'HUGAR · Ekran Kilidi' : existing ? 'PIN Değiştir' : '4 Haneli PIN Belirle'}</h2>
+      <h2>{mode === 'unlock' ? 'KAPLAN FİNANS · Ekran Kilidi' : existing ? 'PIN Değiştir' : '4 Haneli PIN Belirle'}</h2>
       <p>{mode === 'unlock' ? 'Aynı cihazdaki açık oturumu görüntülemek için PIN gir.' : 'Bu PIN yalnızca bu tarayıcıdaki ekran kilidi içindir.'}</p>
       <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
         {mode === 'setup' && existing && <label>Mevcut PIN<input required type="password" inputMode="numeric" autoComplete="off" maxLength={4} value={oldPin} onChange={e => setOldPin(e.target.value.replace(/\D/g, '').slice(0, 4))}/></label>}

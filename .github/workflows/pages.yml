@@ -1,4 +1,4 @@
-name: HUGAR GitHub Pages
+name: KAPLAN FİNANS GitHub Pages
 on:
   push:
     branches: [main]

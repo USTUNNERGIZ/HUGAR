@@ -1,0 +1,9 @@
+
+/* HUGAR compact selectors / shared small dialogs */
+.hugar-compact-select{display:flex;align-items:stretch;gap:7px;min-width:0;width:100%}
+.hugar-compact-select select{flex:1;min-width:0;width:100%}
+.hugar-compact-select .hugar-add-mini,.market-panel .hugar-add-mini{flex:0 0 auto;width:auto!important;min-width:72px;max-width:85px;padding:8px 11px!important;white-space:nowrap;font-size:13px;font-weight:600;border:1px solid #99566e;background:#663247;color:#fff;border-radius:8px;cursor:pointer}
+.hugar-modal-backdrop{position:fixed;inset:0;z-index:9999;background:rgba(10,7,12,.76);display:flex;align-items:center;justify-content:center;padding:16px}
+.hugar-modal{width:min(100%,430px);max-height:90vh;overflow-y:auto;box-sizing:border-box;background:#2c1c28;border:1px solid #8c526a;box-shadow:0 20px 60px #0009;border-radius:16px;padding:22px;color:#fff;display:grid;gap:14px}
+.hugar-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.hugar-modal-head h3{margin:0;font-size:19px}.hugar-modal-close{background:transparent!important;border:0!important;font-size:25px!important;padding:0 6px!important;color:#f9dce7!important;cursor:pointer}
+.hugar-modal-hint{font-size:13px;color:#c9aab7;margin:0}.hugar-modal label{display:grid;gap:7px;font-size:14px;color:#ead3dd}.hugar-modal input,.hugar-modal select{box-sizing:border-box;width:100%;min-width:0;background:#1e1620;color:#fff;border:1px solid #89546a;border-radius:9px;padding:11px;font:inherit}.hugar-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}.hugar-modal-actions button{background:#69354b;border:1px solid #995d73;color:white;padding:10px 15px;border-radius:9px;cursor:pointer}.hugar-modal-actions button:last-child{background:#9c4867}.hugar-modal-error{color:#ffb5c6;font-size:13px;margin:0}

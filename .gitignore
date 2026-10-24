@@ -1,10 +1,8 @@
 node_modules/
 .next/
+out/
 .env
 .env.*
 !.env.example
 *.zip
-*.bak
-*.yedek
 *.tsbuildinfo
-.vercel/
